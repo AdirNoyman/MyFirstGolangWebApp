@@ -1,8 +1,10 @@
 package render
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"path/filepath"
 )
@@ -12,25 +14,43 @@ var functions = template.FuncMap{}
 
 func RenderTemplate(w http.ResponseWriter, tmpl string) {
 
-	_, err := RenderTemplateTest(w)
+	// get the template cache from the app.configuartion file
+	templateCache, err := CreateTemplatesCache()
 
 	if err != nil {
 
-		fmt.Println("Error getting template cache: ", err)
+		// killing the application
+		log.Fatal(err)
 	}
 
-	parsedTemplate, _ := template.ParseFiles("./templates/" + tmpl)
-	err = parsedTemplate.Execute(w, nil)
+	// if found a template will return true(ok) otherwise it will return false
+	t, ok := templateCache[tmpl]
+
+	// if didn't find a template
+	if !ok {
+
+		// killing the application
+		log.Fatal(err)
+
+	}
+
+	// if found a template, create a bytes buffer that will hold the parsed template data(which is in bytes) and asiggn the template data to it
+	buf := new(bytes.Buffer)
+	_ = t.Execute(buf, nil)
+
+	// write the template data to the response writer
+	_, err = buf.WriteTo(w)
 
 	if err != nil {
 
-		fmt.Println("error parsing template: ", err)
-		return
+		fmt.Println("Error writing template to browser: ", err)
+
 	}
 
 }
 
-func RenderTemplateTest(w http.ResponseWriter) (map[string]*template.Template, error) {
+// CreateTemplatesCache creates a cache of templates as map (the equivlant of dictionary/object in other languages)
+func CreateTemplatesCache() (map[string]*template.Template, error) {
 
 	// create a map (key:value data structure) that will hold all my templates. the key will be the template name and the value is the parsed template
 	myCache := map[string]*template.Template{}
@@ -50,8 +70,8 @@ func RenderTemplateTest(w http.ResponseWriter) (map[string]*template.Template, e
 		fmt.Println("Page is currently", page)
 		// assigning the file name to name variable
 		name := filepath.Base(page)
-
-		// creating a set of templates
+		fmt.Println("name is currently", name)
+		// creating a set of templates ('ts')
 		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
 
 		if err != nil {
@@ -70,7 +90,7 @@ func RenderTemplateTest(w http.ResponseWriter) (map[string]*template.Template, e
 		// if we find any layout match, than the length of 'matches' variable will be equal to 1 or more
 		if len(matches) > 0 {
 
-			// parse the matching files
+			// parse the matching files and combines it with the template that is using this layout file
 			ts, err = ts.ParseGlob("./templates/*.layout.html")
 
 			if err != nil {
@@ -80,6 +100,7 @@ func RenderTemplateTest(w http.ResponseWriter) (map[string]*template.Template, e
 			}
 
 			myCache[name] = ts
+			fmt.Println("mycache is ", myCache)
 		}
 
 	}
