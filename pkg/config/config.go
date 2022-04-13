@@ -1,7 +1,5 @@
 package config
 
-// You need to make sure that the configuartion files imports only the standard library packages and not other packages
-
 import (
 	"html/template"
 	"log"
@@ -9,10 +7,8 @@ import (
 
 // AppConfig holds the application configuration
 type AppConfig struct {
-	UseCache bool
-	// create a variable of type map that holds key:value pairs of name of template(key of type string) and a value which is a pointer to a template
+	// UseCache - If we are in production will use the template cache. But if we are in development, we will re-build it every time we load the app
+	UseCache      bool
 	TemplateCache map[string]*template.Template
-
-	// variable that can hold logs
-	InfoLog *log.Logger
+	InfoLog       *log.Logger
 }

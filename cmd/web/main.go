@@ -1,15 +1,12 @@
 package main
 
 import (
-	// "errors"
 	"fmt"
+	"hello_world3/pkg/config"
+	"hello_world3/pkg/handlers"
+	"hello_world3/pkg/render"
 	"log"
-
 	"net/http"
-
-	"github.com/AdirNoyman/MyFirstGolangWebApp/pkg/config"
-	"github.com/AdirNoyman/MyFirstGolangWebApp/pkg/handlers"
-	"github.com/AdirNoyman/MyFirstGolangWebApp/pkg/render"
 )
 
 const portNumber = ":8080"
@@ -17,22 +14,26 @@ const portNumber = ":8080"
 func main() {
 
 	var app config.AppConfig
-	// tc = template cache
-	tc, err := render.CreateTemplatesCache()
 
+	tc, err := render.CreateTemplateCache()
 	if err != nil {
-
-		log.Fatal("Can't create template cache")
+		log.Fatal("Can't create template cache 😩")
 	}
 
 	app.TemplateCache = tc
 
-	http.HandleFunc("/", handlers.Home)
-	http.HandleFunc("/about", handlers.About)
+	// Because I'm in development mode, I'm re-building the templates every time the page reloads
+	app.UseCache = false
 
-	// server //////////////////////////////////////////////////////
-	// this function returns an error. In this case we decided not to store it, so that's why we assigned it to nothing ('_')
-	fmt.Printf("Server started and listening on port %s 😎🤘", portNumber)
+	repo := handlers.NewRepo(&app)
+	handlers.NewHandlers(repo)
+	render.NewTemplates(&app)
+
+	// Routes
+	http.HandleFunc("/", handlers.Repo.Home)
+	http.HandleFunc("/about", handlers.Repo.About)
+
+	// Server
+	fmt.Println(fmt.Sprintf("Starting application on port %s 😎🤟", portNumber))
 	_ = http.ListenAndServe(portNumber, nil)
-
 }

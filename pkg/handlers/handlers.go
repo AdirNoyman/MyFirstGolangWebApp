@@ -1,23 +1,47 @@
 package handlers
 
 import (
+	"hello_world3/pkg/config"
+	"hello_world3/pkg/models"
+	"hello_world3/pkg/render"
 	"net/http"
-
-	"github.com/AdirNoyman/MyFirstGolangWebApp/pkg/render"
 )
 
-// Handlers = controllers
-// Route functions ///////////////////////////////////////////////////////////
-
-// w = res (response)
-// r = req (request)
-func Home(w http.ResponseWriter, r *http.Request) {
-
-	render.RenderTemplate(w, "home.page.html")
+// Repository is the repository type
+type Repository struct {
+	App *config.AppConfig
 }
 
-func About(w http.ResponseWriter, r *http.Request) {
+// Repo is the repository used by the handlers
+var Repo *Repository
 
-	render.RenderTemplate(w, "about.page.html")
+// NewRepo creates a new repository
+func NewRepo(a *config.AppConfig) *Repository {
+	return &Repository{
 
+		App: a,
+	}
+}
+
+// NewHandlers sets the repository for the handlers
+func NewHandlers(r *Repository) {
+
+	Repo = r
+}
+
+// Home is the home page handler
+func (m *Repository) Home(w http.ResponseWriter, r *http.Request) {
+	render.RenderTemplate(w, "home.page.tmpl", &models.TemplateData{})
+}
+
+// About is the about page handler
+func (m *Repository) About(w http.ResponseWriter, r *http.Request) {
+
+	stringMap := make(map[string]string)
+	stringMap["test"] = "Hello Adiros 🤓"
+
+	render.RenderTemplate(w, "about.page.tmpl", &models.TemplateData{
+
+		StringMap: stringMap,
+	})
 }

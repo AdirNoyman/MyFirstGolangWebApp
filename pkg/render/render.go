@@ -3,106 +3,121 @@ package render
 import (
 	"bytes"
 	"fmt"
+	"hello_world3/pkg/config"
+	"hello_world3/pkg/models"
 	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
 )
 
-// decalring a variable that holds a map of functions. name of function as key and value is the function itself
+// Preparation for custom functions I might insert to the templates
 var functions = template.FuncMap{}
 
-func RenderTemplate(w http.ResponseWriter, tmpl string) {
+var app *config.AppConfig
 
-	// get the template cache from the app.configuartion file
-	templateCache, err := CreateTemplatesCache()
+// NewTemplates sets the config for the template package
+func NewTemplates(a *config.AppConfig) {
 
-	if err != nil {
+	app = a
+}
 
-		// killing the application
-		log.Fatal(err)
+func AddDefaultData(td *models.TemplateData) *models.TemplateData {
+	// td = data I want that will be available on every page
+	return td
+}
+
+// RenderTemplate Render the html templates
+func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData) {
+
+	var tc map[string]*template.Template
+
+	// If we are in production will use the template cache. But if we are in development, we will re-build it every time we load the app
+	if app.UseCache {
+		// Get the template cache variable from the app config (that was created in main.go)
+		tc = app.TemplateCache
+
+	} else {
+
+		tc, _ = CreateTemplateCache()
+
 	}
 
-	// if found a template will return true(ok) otherwise it will return false
-	t, ok := templateCache[tmpl]
+	t, ok := tc[tmpl]
 
-	// if didn't find a template
+	// Checking if the name of the template that was passed is in the template cache
 	if !ok {
 
-		// killing the application
-		log.Fatal(err)
-
+		log.Fatal("There is an error.Could not get template from the template cache. Killing the app 😫")
 	}
 
-	// if found a template, create a bytes buffer that will hold the parsed template data(which is in bytes) and asiggn the template data to it
+	// Turn the parsed template we found in to bytes
 	buf := new(bytes.Buffer)
-	_ = t.Execute(buf, nil)
 
-	// write the template data to the response writer
-	_, err = buf.WriteTo(w)
+	td = AddDefaultData(td)
+	// Storing the bytes we got in to this buf variable
+	_ = t.Execute(buf, td)
+
+	// Writing the template into the browser
+	_, err := buf.WriteTo(w)
 
 	if err != nil {
 
-		fmt.Println("Error writing template to browser: ", err)
-
+		fmt.Println("Error writing template to browser", err)
 	}
+
+	//parsedTemplate, _ := template.ParseFiles("./templates/" + tmpl)
+	//err = parsedTemplate.Execute(w, nil)
+	//
+	//if err != nil {
+	//
+	//	fmt.Println("Error parsing template 🥴:", err)
+	//	return
+	//}
 
 }
 
-// CreateTemplatesCache creates a cache of templates as map (the equivlant of dictionary/object in other languages)
-func CreateTemplatesCache() (map[string]*template.Template, error) {
+// CreateTemplateCache creates templates cache as a map(name of template : parsed template)
+func CreateTemplateCache() (map[string]*template.Template, error) {
 
-	// create a map (key:value data structure) that will hold all my templates. the key will be the template name and the value is the parsed template
+	// This creates a map where the string is the name(key) of the template and the value will the parsed template
 	myCache := map[string]*template.Template{}
 
-	// get all files that are in the templates folder, that there name is *[some name].page.html
-	pages, err := filepath.Glob("./templates/*.page.html")
+	// Get all the files in the templates folder that start with the word page
+	pages, err := filepath.Glob("./templates/*.page.tmpl")
 
 	if err != nil {
 
 		return myCache, err
 	}
 
-	// the first parameter is the index, which in this case we decided not to use it and thts why we are using here the sign '_'
-	// pages = all the files we found in the templates folder
+	// _ = index, page = template name
 	for _, page := range pages {
 
-		fmt.Println("Page is currently", page)
-		// assigning the file name to name variable
 		name := filepath.Base(page)
-		fmt.Println("name is currently", name)
-		// creating a set of templates ('ts')
+
+		// ts = template set
 		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
-
 		if err != nil {
 
 			return myCache, err
 		}
 
-		// check if we have any matching layout that suppose to be in this template
-		matches, err := filepath.Glob("./templates/*.layout.html")
-
+		// Look in the templates for any file that contains layout
+		matches, err := filepath.Glob("./templates/*.layout.tmpl")
 		if err != nil {
 
 			return myCache, err
 		}
 
-		// if we find any layout match, than the length of 'matches' variable will be equal to 1 or more
 		if len(matches) > 0 {
 
-			// parse the matching files and combines it with the template that is using this layout file
-			ts, err = ts.ParseGlob("./templates/*.layout.html")
-
-			if err != nil {
-
-				return myCache, err
-
-			}
-
-			myCache[name] = ts
-			fmt.Println("mycache is ", myCache)
+			ts, err = ts.ParseGlob("./templates/*.layout.tmpl")
 		}
 
+		myCache[name] = ts
 	}
+
 	return myCache, nil
+
 }
