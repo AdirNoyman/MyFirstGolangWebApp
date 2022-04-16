@@ -2,18 +2,40 @@ package main
 
 import (
 	"fmt"
+	"github.com/alexedwards/scs/v2"
 	"hello_world3/pkg/config"
 	"hello_world3/pkg/handlers"
 	"hello_world3/pkg/render"
 	"log"
 	"net/http"
+	"time"
 )
 
 const portNumber = ":8080"
 
+// Declare our configuration for this app
+var app config.AppConfig
+
+var session *scs.SessionManager
+
 func main() {
 
-	var app config.AppConfig
+	// Change this to rue when in production
+	app.InProduction = false
+
+	// Create a session object
+	session = scs.New()
+	// Configure how long will the session data be held (e.g. 24h)
+	session.Lifetime = 24 * time.Hour
+	// By default the data is saved in a session cookie
+	// Configure the session to persist if the user closes the browser window
+	session.Cookie.Persist = true
+	// Configuring the cookie to apply only for this site
+	session.Cookie.SameSite = http.SameSiteLaxMode
+	// Configuring the cookie not to be encrypted and to use http (dev only!)
+	session.Cookie.Secure = app.InProduction
+
+	app.Session = session
 
 	tc, err := render.CreateTemplateCache()
 	if err != nil {
@@ -29,11 +51,20 @@ func main() {
 	handlers.NewHandlers(repo)
 	render.NewTemplates(&app)
 
-	// Routes
-	http.HandleFunc("/", handlers.Repo.Home)
-	http.HandleFunc("/about", handlers.Repo.About)
-
 	// Server
 	fmt.Println(fmt.Sprintf("Starting application on port %s 😎🤟", portNumber))
-	_ = http.ListenAndServe(portNumber, nil)
+	//_ = http.ListenAndServe(portNumber, nil)
+
+	// srv = server
+	// Mount our routes to our server
+	srv := &http.Server{
+
+		Addr:    portNumber,
+		Handler: routes(&app),
+	}
+
+	err = srv.ListenAndServe()
+
+	// If there is an error -> Log it
+	log.Fatal(err)
 }

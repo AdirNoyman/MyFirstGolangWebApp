@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/alexedwards/scs/v2"
 	"html/template"
 	"log"
 )
@@ -11,4 +12,8 @@ type AppConfig struct {
 	UseCache      bool
 	TemplateCache map[string]*template.Template
 	InfoLog       *log.Logger
+	// InProduction am I in production environment (used by the session object)
+	InProduction bool
+	// Session declaring our session as a global variable so our app could use it in different places
+	Session *scs.SessionManager
 }
